@@ -1,10 +1,21 @@
 <launch>
-  <arg name="ns" default="audio"/>
-  <arg name="dst" default="alsasink"/>
+  <arg name="ns"          default="audio"/>
+  <!-- format could be 'mp3' or 'raw' -->
+  <arg name="format"      default="mp3"/>
+  <!-- parameters only for raw format -->
+  <arg name="depth"       default="16"/>
+  <arg name="sample_rate" default="16000"/>
+  <arg name="channels"    default="1"/>
+  <!-- destination could be autoaudiosink or a file name (so it's filesink) -->
+  <arg name="dst"         default="autoaudiosink"/>
 
   <group ns="$(arg ns)">
   <node name="audio_play" pkg="audio_play" type="audio_play" output="screen">
-    <param name="dst" value="$(arg dst)"/>
+    <param name="dst"         value="$(arg dst)"/>
+    <param name="format"      value="$(arg format)"/>
+    <param name="depth"       value="$(arg depth)"/>
+    <param name="sample_rate" value="$(arg sample_rate)"/>
+    <param name="channels"    value="$(arg channels)"/>
   </node>
   </group>
 </launch>

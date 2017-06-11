@@ -1,21 +1,29 @@
 <launch>
+  <arg name="namespace"   default="audio"/>
   <!-- arecord -l will show available input devices, use the car number as
       the first number and the subdevice number as the second in a string
       like hw:1,0 -->
-  <arg name="device" default=""/>
-  <arg name="channels" default="1"/>
+  <arg name="device"      default=""/>
+  <!-- format could be 'mp3' or 'raw' -->
+  <arg name="format"      default="mp3"/>
+  <!-- dst could be 'appsink' for publishing topic, or a file name for dump -->
+  <arg name="dst"         default="appsink"/>
+  <!-- these 3 parameters are for raw format -->
+  <arg name="channels"    default="1"/>
   <arg name="sample_rate" default="16000"/>
-  <arg name="format" default="mp3"/>
-  <arg name="ns" default="audio"/>
+  <arg name="depth"       default="16" />
+  <!-- bitrate is for mp3 -->
+  <arg name="bitrate"     default="192"/>
 
-  <group ns="$(arg ns)">
+  <group ns="$(arg namespace)">
     <node name="audio_capture" pkg="audio_capture" type="audio_capture" output="screen">
-      <param name="bitrate" value="128"/>
-      <param name="device" value="$(arg device)"/>
-      <param name="channels" value="$(arg channels)"/>
+      <param name="device"      value="$(arg device)"/>
+      <param name="format"      value="$(arg format)"/>
+      <param name="dst"         value="$(arg dst)"/>
+      <param name="channels"    value="$(arg channels)"/>
       <param name="sample_rate" value="$(arg sample_rate)"/>
-      <param name="format" value="$(arg format)"/>
+      <param name="depth"       value="$(arg depth)"/>
+      <param name="bitrate"     value="$(arg bitrate)"/>
     </node>
   </group>
-
 </launch>

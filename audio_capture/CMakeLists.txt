@@ -11,6 +11,8 @@ find_package(Boost REQUIRED COMPONENTS thread)
 
 include_directories(${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${GST1.0_INCLUDE_DIRS})
 
+add_compile_options(-std=c++11 -Wall)
+
 catkin_package()
 
 add_executable(audio_capture src/audio_capture.cpp)
