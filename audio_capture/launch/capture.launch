@@ -1,5 +1,7 @@
 <launch>
   <arg name="namespace"   default="audio"/>
+  <!-- input audio file path, or empty for system audio device -->
+  <arg name="src"         default=""/>
   <!-- arecord -l will show available input devices, use the car number as
       the first number and the subdevice number as the second in a string
       like hw:1,0 -->
@@ -17,6 +19,7 @@
 
   <group ns="$(arg namespace)">
     <node name="audio_capture" pkg="audio_capture" type="audio_capture" output="screen">
+      <param name="src"         value="$(arg src)"/>
       <param name="device"      value="$(arg device)"/>
       <param name="format"      value="$(arg format)"/>
       <param name="dst"         value="$(arg dst)"/>

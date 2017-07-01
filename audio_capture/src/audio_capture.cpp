@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string>
 #include <gst/gst.h>
+#include <gst/audio/audio-format.h>
 #include <gst/app/gstappsink.h>
 #include <boost/thread.hpp>
 
@@ -34,6 +35,10 @@ public:
         // The destination of the audio
         ros::param::param<std::string>("~dst", dst_type, "appsink");
 
+        // The source file of the audio, empty for autoaudiosrc
+        std::string src;
+        ros::param::param<std::string>("~src", src, "");
+
         // The source of the audio
         std::string device;
         ros::param::param<std::string>("~device", device, "");
@@ -52,6 +57,7 @@ public:
             _sink = gst_element_factory_make("appsink", "sink");
             g_object_set(G_OBJECT(_sink), "emit-signals", true, NULL);
             g_object_set(G_OBJECT(_sink), "max-buffers", 100, NULL);
+            g_object_set(G_OBJECT(_sink), "sync", true, NULL);
             g_signal_connect(G_OBJECT(_sink), "new-sample", G_CALLBACK(onNewBuffer), this);
         } else {
             printf("file sink\n");
@@ -59,34 +65,44 @@ public:
             g_object_set(G_OBJECT(_sink), "location", dst_type.c_str(), NULL);
         }
 
-        _source = gst_element_factory_make("alsasrc", "source");
-        // if device isn't specified, it will use the default which is
-        // the alsa default source.
-        // A valid device will be of the foram hw:0,0 with other numbers
-        // than 0 and 0 as are available.
-        if (device != "") {
-            g_object_set(G_OBJECT(_source), "device", device.c_str(), NULL);
+        if (src == "") {
+            _source = gst_element_factory_make("autoaudiosrc", "source");
+            // if device isn't specified, it will use the default which is
+            // the alsa default source.
+            // A valid device will be of the foram hw:0,0 with other numbers
+            // than 0 and 0 as are available.
+            if (device != "")
+                g_object_set(G_OBJECT(_source), "device", device.c_str(), NULL);
+        } else {
+            _source = gst_element_factory_make("filesrc", "source");
+            g_object_set(G_OBJECT(_source), "location", src.c_str(), NULL);
         }
 
         gboolean link_ok;
 
         if (_format == "mp3") {
-            _convert = gst_element_factory_make("audioconvert", "convert");
-            if (!_convert) {
-                ROS_ERROR_STREAM("Failed to create audioconvert element");
-                exitOnMainThread(1);
-            }
+            if (src == "") {
+                _convert = gst_element_factory_make("audioconvert", "convert");
+                if (!_convert) {
+                    ROS_ERROR_STREAM("Failed to create audioconvert element");
+                    exitOnMainThread(1);
+                }
 
-            _encode = gst_element_factory_make("lamemp3enc", "encoder");
-            if (!_encode) {
-                ROS_ERROR_STREAM("Failed to create encoder element");
-                exitOnMainThread(1);
-            }
-            g_object_set(G_OBJECT(_encode), "quality", 2.0, NULL);
-            g_object_set(G_OBJECT(_encode), "bitrate", _bitrate, NULL);
+                _encode = gst_element_factory_make("lamemp3enc", "encoder");
+                if (!_encode) {
+                    ROS_ERROR_STREAM("Failed to create encoder element");
+                    exitOnMainThread(1);
+                }
+                g_object_set(G_OBJECT(_encode), "quality", 2.0, NULL);
+                g_object_set(G_OBJECT(_encode), "bitrate", _bitrate, NULL);
 
-            gst_bin_add_many(GST_BIN(_pipeline), _source, _convert, _encode, _sink, NULL);
-            link_ok = gst_element_link_many(_source, _convert, _encode, _sink, NULL);
+                gst_bin_add_many(GST_BIN(_pipeline), _source, _convert, _encode, _sink, NULL);
+                link_ok = gst_element_link_many(_source, _convert, _encode, _sink, NULL);
+            } else {
+                _parse = gst_element_factory_make("mpegaudioparse", "parse");
+                gst_bin_add_many(GST_BIN(_pipeline), _source, _parse, _sink, NULL);
+                link_ok = gst_element_link_many(_source, _parse, _sink, NULL);
+            }
         } else if (_format == "raw") {
             _filter = gst_element_factory_make("capsfilter", "filter");
             std::string format = std::string("S") + std::to_string(_depth) + "LE";
@@ -95,11 +111,17 @@ public:
                                                 "channels", G_TYPE_INT, _channels,
                                                 "rate",     G_TYPE_INT, _sample_rate,
                                                 NULL);
-
             g_object_set(G_OBJECT(_filter), "caps", caps, NULL);
             gst_caps_unref(caps);
-            gst_bin_add_many(GST_BIN(_pipeline), _source, _filter, _sink, NULL);
-            link_ok = gst_element_link_many(_source, _filter, _sink, NULL);
+
+            auto f = gst_audio_format_from_string(format.c_str());
+            _parse = gst_element_factory_make("audioparse", "parse");
+            g_object_set(G_OBJECT(_parse), "raw-format", f, NULL);
+            g_object_set(G_OBJECT(_parse), "channels", _channels, NULL);
+            g_object_set(G_OBJECT(_parse), "rate", _sample_rate, NULL);
+
+            gst_bin_add_many(GST_BIN(_pipeline), _source, _filter, _parse, _sink, NULL);
+            link_ok = gst_element_link_many(_source, _filter, _parse, _sink, NULL);
         } else {
             ROS_ERROR_STREAM("format must be \"raw\" or \"mp3\"");
             exitOnMainThread(1);
@@ -175,7 +197,7 @@ private:
 
     boost::thread _gst_thread;
 
-    GstElement *_pipeline, *_source, *_filter, *_sink, *_convert, *_encode;
+    GstElement *_pipeline, *_source, *_filter, *_parse, *_sink, *_convert, *_encode;
     GstBus *_bus;
     int _bitrate, _channels, _depth, _sample_rate;
     GMainLoop *_loop;

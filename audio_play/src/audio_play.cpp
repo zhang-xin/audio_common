@@ -40,7 +40,7 @@ public:
 
             if (format == "raw") {
                 _filter = gst_element_factory_make("capsfilter", "filter");
-                std::string f= std::string("S") + std::to_string(depth) + "LE";
+                std::string f = std::string("S") + std::to_string(depth) + "LE";
                 GstCaps *caps = gst_caps_new_simple("audio/x-raw",
                                                     "format",   G_TYPE_STRING, f.c_str(),
                                                     "channels", G_TYPE_INT, channels,
@@ -135,7 +135,7 @@ private:
 
     static void cb_need_data(GstElement *appsrc, guint unused_size, gpointer user_data)
     {
-        ROS_WARN("need-data signal emitted! Pausing the pipeline");
+        //ROS_WARN("need-data signal emitted! Pausing the pipeline");
         RosGstPlay *client = reinterpret_cast<RosGstPlay*>(user_data);
         gst_element_set_state(GST_ELEMENT(client->_pipeline), GST_STATE_PAUSED);
         client->_paused = true;
