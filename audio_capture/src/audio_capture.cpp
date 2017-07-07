@@ -166,6 +166,12 @@ public:
         GstBuffer *buffer = gst_sample_get_buffer(sample);
 
         audio_common_msgs::AudioData msg;
+        msg.header.stamp = ros::Time::now();
+        msg.header.frame_id = "AUDIO_CAPTURE";
+        msg.format = server->_format;
+        msg.depth = server->_depth;
+        msg.channels = server->_channels;
+        msg.sample_rate = server->_sample_rate;
         gst_buffer_map(buffer, &map, GST_MAP_READ);
         msg.data.resize( map.size );
 
